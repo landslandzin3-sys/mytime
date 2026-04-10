@@ -67,6 +67,8 @@
 </head>
 <body>
 
+<audio id="bgm" src="An RNG Site OST - Procrastination.mp3" autoplay loop></audio>
+
 <div class="clock" id="clock">
   <div class="hand" id="hand"></div>
   <div class="center-dot"></div>
@@ -77,6 +79,17 @@
 <script>
   const clock = document.getElementById('clock');
   const hand = document.getElementById('hand');
+  const bgm = document.getElementById('bgm');
+
+  // volume baixo
+  bgm.volume = 0.2;
+
+  // tentar forçar autoplay (alguns navegadores bloqueiam)
+  bgm.play().catch(() => {
+    document.addEventListener('click', () => {
+      bgm.play();
+    }, { once: true });
+  });
 
   // Criar números do relógio
   for (let i = 1; i <= 12; i++) {
