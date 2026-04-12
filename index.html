@@ -1,182 +1,685 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Relógio</title>
   <style>
+    :root {
+      --bg: #020202;
+      --fg: #f2f2f2;
+      --muted: rgba(255,255,255,0.7);
+      --line: rgba(255,255,255,0.18);
+      --glow: rgba(255,255,255,0.12);
+      --danger: rgba(255,255,255,0.95);
+      --clock-size: min(76vw, 360px);
+    }
+
     * { box-sizing: border-box; }
 
-    body {
+    html, body {
       margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.045), transparent 30%),
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.03), transparent 28%),
+        radial-gradient(circle at 80% 90%, rgba(255,255,255,0.02), transparent 24%),
+        var(--bg);
+      color: var(--fg);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+
+    .grain,
+    .vignette,
+    .flash,
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .grain {
+      opacity: 0.07;
+      background-image:
+        repeating-radial-gradient(circle at 0 0, transparent 0 2px, rgba(255,255,255,0.08) 3px 4px),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 3px);
+      mix-blend-mode: soft-light;
+      animation: drift 12s linear infinite;
+    }
+
+    .scanlines {
+      opacity: 0.08;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.03) 0px,
+        rgba(255,255,255,0.03) 1px,
+        transparent 2px,
+        transparent 4px
+      );
+    }
+
+    .vignette {
+      box-shadow: inset 0 0 220px rgba(0,0,0,0.94);
+    }
+
+    .flash {
+      opacity: 0;
+      background: radial-gradient(circle, rgba(255,255,255,0.14), transparent 45%);
+      transition: opacity 0.25s ease;
+    }
+
+    .wrap {
+      position: relative;
+      width: min(92vw, 700px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      font-family: Arial, sans-serif;
-      background: #000;
-      color: #fff;
+      gap: 18px;
+      z-index: 1;
+    }
+
+    .title {
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: rgba(255,255,255,0.34);
+      user-select: none;
+    }
+
+    .clock-shell {
+      position: relative;
+      width: calc(var(--clock-size) + 64px);
+      height: calc(var(--clock-size) + 64px);
+      display: grid;
+      place-items: center;
+      filter: drop-shadow(0 0 26px rgba(255,255,255,0.05));
+    }
+
+    .halo {
+      position: absolute;
+      width: calc(var(--clock-size) + 26px);
+      height: calc(var(--clock-size) + 26px);
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow:
+        0 0 18px rgba(255,255,255,0.05),
+        inset 0 0 24px rgba(255,255,255,0.03);
+      animation: breathe 7s ease-in-out infinite;
     }
 
     .clock {
-      width: 240px;
-      height: 240px;
-      border: 6px solid #fff;
-      border-radius: 50%;
       position: relative;
+      width: var(--clock-size);
+      height: var(--clock-size);
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.55);
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.03), transparent 55%),
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.025), transparent 68%),
+        rgba(255,255,255,0.015);
+      box-shadow:
+        0 0 0 6px rgba(255,255,255,0.025),
+        0 0 60px rgba(255,255,255,0.04),
+        inset 0 0 20px rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+
+    .ring,
+    .marks,
+    .numbers,
+    .face-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+    }
+
+    .ring {
+      border: 1px solid rgba(255,255,255,0.08);
+      transform: scale(0.92);
+    }
+
+    .face-overlay {
+      background:
+        radial-gradient(circle at 50% 50%, transparent 58%, rgba(255,255,255,0.03) 72%, transparent 76%),
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.01), transparent 70%);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .mark {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1px;
+      height: 50%;
+      transform-origin: bottom center;
+      opacity: 0.9;
+    }
+
+    .mark::before {
+      content: "";
+      position: absolute;
+      top: 8%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      box-shadow: 0 0 8px rgba(255,255,255,0.02);
+    }
+
+    .mark.major::before {
+      width: 2px;
+      height: 14px;
+      background: rgba(255,255,255,0.35);
     }
 
     .number {
       position: absolute;
       transform: translate(-50%, -50%);
-      font-size: 14px;
+      font-size: clamp(14px, 2.1vw, 18px);
+      color: rgba(255,255,255,0.88);
+      text-shadow: 0 0 10px rgba(255,255,255,0.04);
+      user-select: none;
     }
 
-    .center-dot {
-      width: 10px;
-      height: 10px;
-      background: #fff;
-      border-radius: 50%;
+    .hand-wrap {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 3;
+      inset: 0;
+      z-index: 4;
     }
 
     .hand {
       position: absolute;
-      width: 50%;
-      height: 2px;
-      background: #fff;
       top: 50%;
       left: 50%;
+      width: 43%;
+      height: 4px;
+      border-radius: 999px;
       transform-origin: 0% 50%;
       transform: rotate(-90deg);
-      z-index: 2;
-      transition: transform 0.8s linear;
+      background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.82) 55%, rgba(255,255,255,0.18) 100%);
+      box-shadow:
+        0 0 14px rgba(255,255,255,0.18),
+        0 0 34px rgba(255,255,255,0.06);
     }
 
-    .text {
-      margin-top: 20px;
-      font-size: 24px;
+    .hand::after {
+      content: "";
+      position: absolute;
+      right: -2px;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 0 12px rgba(255,255,255,0.22);
+    }
+
+    .trail {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 34%;
+      height: 2px;
+      border-radius: 999px;
+      transform-origin: 0% 50%;
+      transform: rotate(-90deg);
+      background: linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02));
+      filter: blur(1px);
+      z-index: 3;
+    }
+
+    .center-dot {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 14px;
+      height: 14px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      z-index: 5;
+      background: rgba(255,255,255,0.95);
+      box-shadow:
+        0 0 0 5px rgba(255,255,255,0.08),
+        0 0 16px rgba(255,255,255,0.18);
+    }
+
+    .message-box {
+      width: min(92vw, 760px);
+      min-height: 86px;
+      display: grid;
+      place-items: center;
+      padding: 14px 18px;
       text-align: center;
+      position: relative;
+    }
+
+    .message {
+      font-size: clamp(20px, 2.8vw, 32px);
+      line-height: 1.25;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.95);
+      text-shadow: 0 0 14px rgba(255,255,255,0.06);
+      opacity: 1;
+      transform: translateY(0px);
+      transition: opacity 0.45s ease, transform 0.45s ease, filter 0.45s ease;
+      max-width: 18ch;
+      word-break: break-word;
+    }
+
+    .message.fade-out {
+      opacity: 0;
+      transform: translateY(6px);
+      filter: blur(3px);
+    }
+
+    .hint {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.26);
+      user-select: none;
+      min-height: 14px;
+    }
+
+    .start-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.78);
+      backdrop-filter: blur(6px);
+      z-index: 10;
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+
+    .start-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .start-card {
+      width: min(92vw, 420px);
+      border: 1px solid rgba(255,255,255,0.13);
+      background: rgba(255,255,255,0.04);
+      border-radius: 24px;
+      padding: 24px 22px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(255,255,255,0.03);
+    }
+
+    .start-card h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    .start-card p {
+      margin: 0 0 18px;
+      color: rgba(255,255,255,0.68);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .start-btn {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 999px;
+      padding: 12px 18px;
+      min-width: 170px;
+      cursor: pointer;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .state-late .clock,
+    .state-late .halo {
+      box-shadow:
+        0 0 0 6px rgba(255,255,255,0.03),
+        0 0 72px rgba(255,255,255,0.055),
+        inset 0 0 28px rgba(255,255,255,0.045);
+    }
+
+    .state-final .clock-shell {
+      animation: tremor 4s infinite ease-in-out;
+    }
+
+    .state-final .message {
+      letter-spacing: 0.035em;
+      text-shadow: 0 0 20px rgba(255,255,255,0.08);
+    }
+
+    .state-final .halo {
+      animation-duration: 2.1s;
+    }
+
+    .state-final .grain {
+      opacity: 0.12;
+    }
+
+    .glitch {
+      animation: textGlitch 0.12s steps(2, end) 2;
+    }
+
+    @keyframes drift {
+      from { transform: translate(0, 0); }
+      25% { transform: translate(-1.2%, 0.5%); }
+      50% { transform: translate(0.8%, -0.8%); }
+      75% { transform: translate(-0.5%, 0.7%); }
+      to { transform: translate(0, 0); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.012); opacity: 1; }
+    }
+
+    @keyframes tremor {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(0.4px, -0.6px) rotate(-0.05deg); }
+      40% { transform: translate(-0.6px, 0.3px) rotate(0.05deg); }
+      60% { transform: translate(0.7px, 0.4px) rotate(-0.04deg); }
+      80% { transform: translate(-0.5px, -0.5px) rotate(0.04deg); }
+    }
+
+    @keyframes textGlitch {
+      0% { transform: translate(0); filter: blur(0); }
+      25% { transform: translate(-1px, 0); filter: blur(0.6px); }
+      50% { transform: translate(1px, 0); filter: blur(0); }
+      75% { transform: translate(0, -1px); filter: blur(0.7px); }
+      100% { transform: translate(0); filter: blur(0); }
+    }
+
+    @media (max-width: 480px) {
+      .message-box { min-height: 102px; }
+      .clock-shell { width: calc(var(--clock-size) + 34px); height: calc(var(--clock-size) + 34px); }
+      .hint { font-size: 11px; }
     }
   </style>
 </head>
 <body>
+  <div class="grain"></div>
+  <div class="scanlines"></div>
+  <div class="flash" id="flash"></div>
+  <div class="vignette"></div>
 
-<audio id="bgm" loop preload="auto" autoplay muted>
-  <source src="An RNG Site OST - Procrastination.mp3" type="audio/mpeg">
-</audio>
+  <audio id="bgm" loop preload="auto">
+    <source src="An RNG Site OST - Procrastination.mp3" type="audio/mpeg" />
+  </audio>
 
-<div class="clock" id="clock">
-  <div class="hand" id="hand"></div>
-  <div class="center-dot"></div>
-</div>
+  <div class="start-overlay" id="startOverlay">
+    <div class="start-card">
+      <h1>Toque para começar</h1>
+      <p>O relógio já está em movimento. O som só começa depois da sua interação.</p>
+      <button class="start-btn" id="startBtn">Entrar</button>
+    </div>
+  </div>
 
-<div class="text" id="message">Vocês testaram minha paciência</div>
+  <main class="wrap" aria-label="Relógio atmosférico">
+    <div class="title">Observe</div>
 
+    <div class="clock-shell" id="clockShell">
+      <div class="halo"></div>
+      <div class="clock" id="clock">
+        <div class="ring"></div>
+        <div class="marks" id="marks"></div>
+        <div class="numbers" id="numbers"></div>
+        <div class="trail" id="trail"></div>
+        <div class="hand-wrap">
+          <div class="hand" id="hand"></div>
+        </div>
+        <div class="center-dot"></div>
+        <div class="face-overlay"></div>
+      </div>
+    </div>
 
-<script>
-  const clock = document.getElementById('clock');
-  const hand = document.getElementById('hand');
-  const bgm = document.getElementById('bgm');
-  
+    <div class="message-box">
+      <div class="message" id="message">Vocês testaram minha paciência</div>
+    </div>
 
-  bgm.volume = 0.15;
+    <div class="hint" id="hint">Não desvie o olhar</div>
+  </main>
 
-  // tentar iniciar automaticamente (muted permitido)
-  bgm.play().catch(()=>{});
+  <script>
+    const TARGET_MONTH = 4; // maio
+    const TARGET_DAY = 25;
+    const hand = document.getElementById('hand');
+    const trail = document.getElementById('trail');
+    const clock = document.getElementById('clock');
+    const numbers = document.getElementById('numbers');
+    const marks = document.getElementById('marks');
+    const messageEl = document.getElementById('message');
+    const hintEl = document.getElementById('hint');
+    const bgm = document.getElementById('bgm');
+    const startBtn = document.getElementById('startBtn');
+    const startOverlay = document.getElementById('startOverlay');
+    const flash = document.getElementById('flash');
 
-  // remover mute assim que houver qualquer interação
-  function unlockAudio(){
-    bgm.muted = false;
-    bgm.play();
-    document.removeEventListener('click', unlockAudio);
-    document.removeEventListener('mousemove', unlockAudio);
-  }
+    const messagePools = {
+      calm: [
+        'Vocês testaram minha paciência',
+        'E-Eu... tentei ajudar',
+        'Eu poderia repetir isso várias vezes',
+        'Eu só queria ajudar',
+        'Pelo menos, eu queria que vocês se divertissem um pouco',
+        'Mas vocês não parecem estar se divertindo',
+        'Ainda há silêncio demais',
+        'Vocês realmente vão continuar?',
+        'Eu ainda estou aqui'
+      ],
+      uneasy: [
+        'Não, deixe-os',
+        'Eu não sei o que fazer',
+        'Por que vocês não estão se divertindo?',
+        'Vocês conseguem ouvir isso?',
+        'Está ficando mais perto',
+        'Talvez ainda dê tempo',
+        'Alguma coisa está errada',
+        'Eu ainda tentei evitar isso'
+      ],
+      late: [
+        'Não olhem para o relógio',
+        'Vocês ainda podem fingir que não viram',
+        'Está quase impossível ignorar agora',
+        'Eu queria que isso acabasse diferente',
+        'Quanto mais perto, mais pesado fica',
+        '..--- ..... / -.. . / -- .- .. ---',
+        'Vocês realmente chegaram até aqui'
+      ],
+      final: [
+        'Não me deixem sozinho',
+        'Agora vocês estão prestando atenção',
+        'Eu sempre tentei ajudar vocês',
+        'Não importa a ocasião',
+        'Eu não sei o que fazer',
+        '. ..- / ... . -- .--. .-. . / - . -. - .- .-. . .. / .- .--- ..- -.. .- .-.',
+        'Já dá para sentir, não dá?',
+        'Vocês não parecem estar se divertindo'
+      ]
+    };
 
-  document.addEventListener('click', unlockAudio);
-  document.addEventListener('mousemove', unlockAudio);
+    const hints = {
+      calm: 'Não desvie o olhar',
+      uneasy: 'Ele continua andando',
+      late: 'Tente ignorar, se conseguir',
+      final: 'Agora é tarde para parar'
+    };
 
-  
-  document.addEventListener('click', () => {
-    if (bgm.paused) startMusic();
-  }, { once: true });
-
-  for (let i = 1; i <= 12; i++) {
-    const num = document.createElement('div');
-    num.className = 'number';
-    num.innerText = i;
-
-    const angle = (i * 30) * Math.PI / 180;
-    const radius = 100;
-
-    const x = 120 + radius * Math.sin(angle);
-    const y = 120 - radius * Math.cos(angle);
-
-    num.style.left = x + 'px';
-    num.style.top = y + 'px';
-
-    clock.appendChild(num);
-  }
-
-  function getNextTarget() {
-    const now = new Date();
-    let target = new Date(now.getFullYear(), 4, 25, 0, 0, 0);
-    if (now > target) {
-      target = new Date(now.getFullYear() + 1, 4, 25, 0, 0, 0);
+    function getNextTarget(now = new Date()) {
+      let target = new Date(now.getFullYear(), TARGET_MONTH, TARGET_DAY, 0, 0, 0, 0);
+      if (now > target) {
+        target = new Date(now.getFullYear() + 1, TARGET_MONTH, TARGET_DAY, 0, 0, 0, 0);
+      }
+      return target;
     }
-    return target;
-  }
 
-  function updateClock() {
-    const now = new Date();
-    const target = getNextTarget();
-    const start = new Date(target.getFullYear() - 1, 4, 25, 0, 0, 0);
+    function getStartFromTarget(target) {
+      return new Date(target.getFullYear() - 1, TARGET_MONTH, TARGET_DAY, 0, 0, 0, 0);
+    }
 
-    const total = target - start;
-    const elapsed = now - start;
-    const progress = Math.max(0, Math.min(1, elapsed / total));
+    function createClockFace() {
+      const rect = clock.getBoundingClientRect();
+      const size = rect.width || 320;
+      const center = size / 2;
+      const numberRadius = size * 0.405;
 
-    const degrees = -90 + progress * 360;
-    hand.style.transform = `rotate(${degrees}deg)`;
-  }
+      numbers.innerHTML = '';
+      marks.innerHTML = '';
 
-  setInterval(updateClock, 1000);
-  updateClock();
+      for (let i = 0; i < 60; i++) {
+        const mark = document.createElement('div');
+        mark.className = 'mark' + (i % 5 === 0 ? ' major' : '');
+        mark.style.transform = `translate(-50%, -100%) rotate(${i * 6}deg)`;
+        marks.appendChild(mark);
+      }
 
-  // mensagens aleatórias
-  const messages = [
-    "Vocês testaram minha paciência",
-    "E-Eu.. Tentei ajudar",
-    "Eu poderia repetir isso várias vezes",
-    "Não, os deixe-os",
-    ". ..- / ... . -- .--. .-. . / - . -. - .- .-. . .. / .- .--- ..- -.. .- .-. / ...- --- -.-. ... --..-- / -. --- / .. -- .--. --- .-. - .- / .- / --- -.-. .- ... .. --- .-.-.-",
-    "..--- ..... / -.. . / -- .- .. --- / . ... - / .--. .-. --- -..- .. -- --- --..-- / ...- --- -.-. / . ... - / .--. .-. . .--. .- .-. .- -.. --- / .--. .- .-. .- / .--. .-. --- ...- .- .-. / -.. .- / ... ..- .- / .--. .-. .--. .. .- / -- . -. - .. .-. .- ..--..",
-    "Eu queria",
-    "Pelo menos, eu queria que vocês se divertissem um pouco",
-    "Mas... Vocês não parecem estar se divertindo",
-    "Eu... Eu não sei o que fazer",
-    "Eu... Eu só queria ajudar",
-    "Por que vocês não estão se divertindo?",
-    "Eu... Eu não sei o que fazer",
-  ];
+      for (let i = 1; i <= 12; i++) {
+        const num = document.createElement('div');
+        num.className = 'number';
+        num.textContent = i;
 
-  const messageEl = document.getElementById('message');
+        const angle = (i * 30) * Math.PI / 180;
+        const x = center + numberRadius * Math.sin(angle);
+        const y = center - numberRadius * Math.cos(angle);
 
-  function changeMessage() {
-    const random = Math.floor(Math.random() * messages.length);
-    messageEl.textContent = messages[random];
+        num.style.left = `${x}px`;
+        num.style.top = `${y}px`;
+        numbers.appendChild(num);
+      }
+    }
 
-    const nextTime = Math.random() * 4000 + 2000; // entre 2s e 6s
-    setTimeout(changeMessage, nextTime);
-  }
+    function getPhase(diff) {
+      const day = 24 * 60 * 60 * 1000;
+      if (diff > 30 * day) return 'calm';
+      if (diff > 7 * day) return 'uneasy';
+      if (diff > day) return 'late';
+      return 'final';
+    }
 
-  changeMessage();
-</script>
+    function pulseFlash(amount = 1) {
+      flash.style.opacity = String(Math.min(0.15, 0.05 * amount));
+      clearTimeout(pulseFlash._t);
+      pulseFlash._t = setTimeout(() => {
+        flash.style.opacity = '0';
+      }, 140);
+    }
 
+    function applyPhaseEffects(phase, progress, diff) {
+      document.body.classList.remove('state-late', 'state-final');
+      if (phase === 'late') document.body.classList.add('state-late');
+      if (phase === 'final') document.body.classList.add('state-final');
+
+      hintEl.textContent = hints[phase];
+
+      const subtleOpacity = 0.04 + progress * 0.05;
+      clock.style.boxShadow = `
+        0 0 0 6px rgba(255,255,255,${(0.02 + progress * 0.02).toFixed(3)}),
+        0 0 ${Math.round(55 + progress * 20)}px rgba(255,255,255,${subtleOpacity.toFixed(3)}),
+        inset 0 0 ${Math.round(20 + progress * 18)}px rgba(255,255,255,${(0.03 + progress * 0.03).toFixed(3)})
+      `;
+
+      if (phase === 'final') {
+        const min = 60 * 1000;
+        if (diff < 20 * min && Math.random() < 0.008) {
+          pulseFlash(1.4);
+          messageEl.classList.add('glitch');
+          setTimeout(() => messageEl.classList.remove('glitch'), 220);
+        }
+      }
+    }
+
+    let currentPool = null;
+    let messageTimer = null;
+
+    function scheduleNextMessage() {
+      const now = new Date();
+      const diff = getNextTarget(now) - now;
+      const phase = getPhase(diff);
+      const pool = messagePools[phase];
+
+      if (currentPool !== phase) currentPool = phase;
+
+      const nextMessage = pool[Math.floor(Math.random() * pool.length)];
+      messageEl.classList.add('fade-out');
+
+      setTimeout(() => {
+        messageEl.textContent = nextMessage;
+        messageEl.classList.remove('fade-out');
+      }, 260);
+
+      const nextDelay = phase === 'calm'
+        ? 5000 + Math.random() * 3000
+        : phase === 'uneasy'
+          ? 3500 + Math.random() * 2600
+          : phase === 'late'
+            ? 2500 + Math.random() * 1800
+            : 1400 + Math.random() * 1500;
+
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(scheduleNextMessage, nextDelay);
+    }
+
+    function updateClockFrame() {
+      const now = new Date();
+      const target = getNextTarget(now);
+      const start = getStartFromTarget(target);
+
+      const total = target - start;
+      const elapsed = now - start;
+      const progress = Math.max(0, Math.min(1, elapsed / total));
+      const degrees = -90 + progress * 360;
+      const trailDeg = degrees - 2.3;
+
+      hand.style.transform = `rotate(${degrees}deg)`;
+      trail.style.transform = `rotate(${trailDeg}deg)`;
+
+      const diff = target - now;
+      const phase = getPhase(diff);
+      applyPhaseEffects(phase, progress, diff);
+
+      requestAnimationFrame(updateClockFrame);
+    }
+
+    async function startExperience() {
+      startOverlay.classList.add('hidden');
+      try {
+        bgm.volume = 0.15;
+        await bgm.play();
+      } catch (err) {
+        console.warn('Áudio não pôde iniciar automaticamente após clique.', err);
+      }
+      pulseFlash(1);
+    }
+
+    startBtn.addEventListener('click', startExperience);
+    window.addEventListener('resize', createClockFace);
+
+    createClockFace();
+    scheduleNextMessage();
+    updateClockFrame();
+  </script>
 </body>
 </html>
